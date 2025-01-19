@@ -21,10 +21,10 @@ Architecture Overview<br /><br />
 
 1.	Database Design:<br />
 o	We’ll use a hybrid architecture: <br />
-	Relational Databases (RDBMS): For transactional data such as customer orders, payments, and inventory (e.g., PostgreSQL or MySQL).<br />
-	Non-Relational Databases (NoSQL): For product catalogs, user activity logs, and other semi-structured data (e.g., MongoDB).<br />
-	Data Warehouse: For analytical queries, aggregating data across the platform and enabling business intelligence reporting (e.g., Amazon Redshift, Google BigQuery).<br />
-	Data Lake: Store raw, unstructured data such as customer feedback, logs, and images in a Data Lake (e.g., AWS S3, Google Cloud Storage).<br />
+&ensp;	Relational Databases (RDBMS): For transactional data such as customer orders, payments, and inventory (e.g., PostgreSQL or MySQL).<br />
+&ensp;	Non-Relational Databases (NoSQL): For product catalogs, user activity logs, and other semi-structured data (e.g., MongoDB).<br />
+&ensp;	Data Warehouse: For analytical queries, aggregating data across the platform and enabling business intelligence reporting (e.g., Amazon Redshift, Google BigQuery).<br />
+&ensp;	Data Lake: Store raw, unstructured data such as customer feedback, logs, and images in a Data Lake (e.g., AWS S3, Google Cloud Storage).<br />
 
 2.	ETL Pipeline:<br />
 o	Extract data from transactional systems and other sources.<br />

@@ -1,0 +1,174 @@
+/*
+1. Database Design
+Let's begin with a simplified relational database schema for handling transactions:
+Schema for Relational Database (PostgreSQL)
+*/
+
+-- Table for customers
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone_number VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table for products
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255),
+    description TEXT,
+    price DECIMAL(10, 2),
+    stock_quantity INT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Table for orders
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_status VARCHAR(50),
+    total_price DECIMAL(10, 2),
+    order_date TIMESTAMPTZ DEFAULT NOW(),
+    shipping_address TEXT
+);
+
+-- Table for order items (line items in a specific order)
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    price DECIMAL(10, 2)
+);
+
+/*
+2. ETL Pipeline (Extract, Transform, Load)
+For our ETL pipeline, let's assume we're using Apache Airflow for orchestration, and Python to extract, transform, and load data from transactional 
+systems into a Data Warehouse.
+
+ETL Python Code Example
+Extract: Pull data from the source database (PostgreSQL).
+*/
+
+import psycopg2
+import pandas as pd
+
+def extract_data():
+    # Connect to the source PostgreSQL database
+    conn = psycopg2.connect(
+        dbname="ecommerce_db", 
+        user="username", 
+        password="password", 
+        host="localhost", 
+        port="5432"
+    )
+    query = "SELECT * FROM orders WHERE order_date > '2024-01-01'"
+    orders_df = pd.read_sql(query, conn)
+    conn.close()
+    return orders_df
+
+-- Transform: Perform necessary transformations (e.g., aggregate sales, clean data).
+
+def transform_data(orders_df):
+    # Clean data, e.g., handle missing values, remove duplicates
+    orders_df.dropna(subset=['order_id', 'customer_id', 'total_price'], inplace=True)
+    
+    # Aggregate sales data for reporting (example: total sales per customer)
+    sales_by_customer = orders_df.groupby('customer_id').agg({'total_price': 'sum'}).reset_index()
+    sales_by_customer.rename(columns={'total_price': 'total_sales'}, inplace=True)
+    
+    return sales_by_customer
+
+-- Load: Load the transformed data into the Data Warehouse (Amazon Redshift).
+
+import psycopg2
+
+def load_to_redshift(df):
+    conn = psycopg2.connect(
+        dbname="redshift_db", 
+        user="username", 
+        password="password", 
+        host="redshift-cluster", 
+        port="5439"
+    )
+    cursor = conn.cursor()
+    
+    for index, row in df.iterrows():
+        cursor.execute(
+            "INSERT INTO sales_by_customer (customer_id, total_sales) VALUES (%s, %s)",
+            (row['customer_id'], row['total_sales'])
+        )
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+/*
+Running the ETL Pipeline in Apache Airflow:
+In Apache Airflow, you would set up a DAG to orchestrate the ETL pipeline. Here's an example Airflow task that runs the ETL process:
+*/
+
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime
+
+def etl_task():
+    data = extract_data()
+    transformed_data = transform_data(data)
+    load_to_redshift(transformed_data)
+
+default_args = {
+    'owner': 'data_architect',
+    'start_date': datetime(2024, 1, 1),
+}
+
+dag = DAG(
+    'ecommerce_etl',
+    default_args=default_args,
+    schedule_interval='@daily',  # Run daily
+)
+
+etl = PythonOperator(
+    task_id='etl_task',
+    python_callable=etl_task,
+    dag=dag,
+)
+
+etl
+
+/*
+3. Data Access Layer (APIs)
+For the data access layer, you could create a simple API using Flask to interact with the database. Here's an example of an API that retrieves customer data:
+*/
+
+from flask import Flask, jsonify
+import psycopg2
+
+app = Flask(__name__)
+
+def get_customer_data(customer_id):
+    conn = psycopg2.connect(
+        dbname="ecommerce_db", 
+        user="username", 
+        password="password", 
+        host="localhost", 
+        port="5432"
+    )
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM customers WHERE customer_id = %s", (customer_id,))
+    customer_data = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return customer_data
+
+@app.route('/customer/<int:customer_id>', methods=['GET'])
+def customer(customer_id):
+    data = get_customer_data(customer_id)
+    return jsonify(data)
+
+if __name__ == "__main__":
+    app.run(debug=True)

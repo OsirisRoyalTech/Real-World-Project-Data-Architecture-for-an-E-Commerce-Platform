@@ -1,0 +1,9 @@
+The data architecture solution we designed addresses the key challenges faced by the e-commerce platform:
+
+  1.	Scalability: We used relational databases for transactional data and NoSQL databases for semi-structured data. 
+        We also designed the system to scale with the help of cloud platforms and horizontal scaling.
+  2.	Performance: The system utilizes a data warehouse for fast analytical queries and an ETL pipeline to aggregate data for reporting.
+  3.	Security: We included role-based access control, encryption for sensitive data, and ensured compliance with industry regulations like GDPR and PCI-DSS.
+  4.	Real-Time Data: Through the ETL pipeline, we can ensure that data flows efficiently between systems, enabling near real-time analytics.
+
+This project demonstrates how a Data Architect would design a scalable, secure, and efficient architecture for a modern e-commerce platform.
